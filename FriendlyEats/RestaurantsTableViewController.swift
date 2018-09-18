@@ -73,8 +73,30 @@ class RestaurantsTableViewController: UIViewController, UITableViewDataSource, U
         stopObserving()
         
         // Display data from Firestore, part one
-        
-        
+        listener = query.addSnapshotListener { [unowned self] (snapshot, error) in
+            guard let snapshot = snapshot else {
+                print("Error fetching snapshot results: \(error!)")
+                return
+            }
+            let models = snapshot.documents.map { (document) -> Restaurant in
+                if let model = Restaurant(dictionary: document.data()) {
+                    return model
+                } else {
+                    // Don't use fatalError here in a real app.
+                    fatalError("Unable to initialize type \(Restaurant.self) with dictionary \(document.data())")
+                }
+            }
+            self.restaurants = models
+            self.documents = snapshot.documents
+            
+            if self.documents.count > 0 {
+                self.tableView.backgroundView = nil
+            } else {
+                self.tableView.backgroundView = self.backgroundView
+            }
+            
+            self.tableView.reloadData()
+        }
     }
     
     fileprivate func stopObserving() {
@@ -292,6 +314,12 @@ class RestaurantTableViewCell: UITableViewCell {
         
         let image = imageURL(from: restaurant.name)
         thumbnailView.sd_setImage(with: image)
+        
+        nameLabel.text = restaurant.name
+        cityLabel.text = restaurant.city
+        categoryLabel.text = restaurant.category
+        starsView.rating = Int(restaurant.averageRating.rounded())
+        priceLabel.text = priceString(from: restaurant.price)
     }
     
     override func prepareForReuse() {
